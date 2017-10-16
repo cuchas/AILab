@@ -1,0 +1,15 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="br.com.cucha.mybank">
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <application>
+
+        <activity
+            android:name=".VoiceAssistantActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme" />
+
+    </application>
+
+</manifest>

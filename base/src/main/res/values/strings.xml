@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">AILab</string>
+    <string name="call_ai">Call AI</string>
+    <string name="enable_audio_to_use">Enable audio permission to start using it</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="send">send</string>
+</resources>
