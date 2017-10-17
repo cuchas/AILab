@@ -1,6 +1,9 @@
 package br.com.cucha.ailab;
 
-import android.os.AsyncTask;
+import android.app.LoaderManager;
+import android.content.AsyncTaskLoader;
+import android.content.Context;
+import android.content.Loader;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
@@ -18,9 +21,13 @@ import ai.api.android.AIService;
 import ai.api.model.AIRequest;
 import ai.api.model.AIResponse;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<AIResponse> {
 
-    ArrayList<String> chatList = new ArrayList<>();
+    ArrayList<String> mChatList = new ArrayList<>();
+    private ChatAdapter mAdapter;
+    private RecyclerView mRecyclerView;
+    private String mQuery;
+    private AIService mAiService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,58 +40,79 @@ public class MainActivity extends AppCompatActivity {
                 AIConfiguration.SupportedLanguages.PortugueseBrazil,
                 AIConfiguration.RecognitionEngine.System);
 
-        final AIService aiService = AIService.getService(this, config);
+        mAiService = AIService.getService(this, config);
 
         final EditText edit = findViewById(R.id.edit_text_main);
 
-        final ChatAdapter adapter = new ChatAdapter();
+        mAdapter = new ChatAdapter();
 
-        final RecyclerView recyclerView = findViewById(R.id.recycler_main);
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        recyclerView.setAdapter(adapter);
+        mRecyclerView = findViewById(R.id.recycler_main);
+        mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        mRecyclerView.setAdapter(mAdapter);
+
+        getLoaderManager().initLoader(0, null, this);
 
         findViewById(R.id.button_send_main).setOnClickListener(v -> {
 
-            final String query = edit.getText().toString();
+            mQuery = edit.getText().toString();
 
             edit.setText(null);
 
-            chatList.add(query);
+            mChatList.add(mQuery);
 
-            adapter.notifyDataSetChanged();
+            getLoaderManager().restartLoader(0, null, this).forceLoad();
 
-            AIRequest req = new AIRequest(query);
-
-            new AsyncTask<AIRequest, Void, AIResponse>() {
-                @Override
-                protected AIResponse doInBackground(AIRequest... aiRequests) {
-                    AIResponse response = null;
-                    try {
-                        response = aiService.textRequest(req);
-                    } catch (AIServiceException e) {
-                        e.printStackTrace();
-                    }
-
-                    return response;
-                }
-
-                @Override
-                protected void onPostExecute(AIResponse aiResponse) {
-                    super.onPostExecute(aiResponse);
-
-                    chatList.add(aiResponse.getResult().getFulfillment().getSpeech());
-
-                    adapter.notifyDataSetChanged();
-
-                    recyclerView.scrollToPosition(chatList.size() -1);
-                }
-            }.execute(req);
-
-            edit.setText(null);
+            mAdapter.notifyDataSetChanged();
         });
     }
 
-    private class ChatViewHolder extends RecyclerView.ViewHolder {
+    @Override
+    public Loader<AIResponse> onCreateLoader(int id, Bundle args) {
+        return new AILoader(this, mAiService, mQuery);
+    }
+
+    @Override
+    public void onLoadFinished(Loader<AIResponse> loader, AIResponse data) {
+
+        if(data == null) return;
+
+        mChatList.add(data.getResult().getFulfillment().getSpeech());
+
+        mAdapter.notifyDataSetChanged();
+
+        mRecyclerView.scrollToPosition(mChatList.size() -1);
+    }
+
+    @Override
+    public void onLoaderReset(Loader<AIResponse> loader) {
+
+    }
+
+    private static class AILoader extends AsyncTaskLoader<AIResponse> {
+
+        private final AIService mAiService;
+        private final AIRequest mRequest;
+
+        public AILoader(Context context, AIService aiService, String query) {
+            super(context);
+            mAiService = aiService;
+            mRequest = new AIRequest(query);
+        }
+
+        @Override
+        public AIResponse loadInBackground() {
+            AIResponse response = null;
+            try {
+                response = mAiService.textRequest(mRequest);
+            } catch (AIServiceException e) {
+                e.printStackTrace();
+            }
+
+            return response;
+        }
+    }
+
+    private static class ChatViewHolder extends RecyclerView.ViewHolder {
 
         private final TextView text;
 
@@ -106,19 +134,17 @@ public class MainActivity extends AppCompatActivity {
 
             View view = getLayoutInflater().inflate(R.layout.view_text_main, null);
 
-            ChatViewHolder viewHolder = new ChatViewHolder(view);
-
-            return viewHolder;
+            return new ChatViewHolder(view);
         }
 
         @Override
         public void onBindViewHolder(ChatViewHolder holder, int position) {
-            holder.bind(chatList.get(position));
+            holder.bind(mChatList.get(position));
         }
 
         @Override
         public int getItemCount() {
-            return chatList.size();
+            return mChatList.size();
         }
     }
 }
