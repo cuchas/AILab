@@ -75,6 +75,8 @@ public class MainActivity extends AppCompatActivity {
                     chatList.add(aiResponse.getResult().getFulfillment().getSpeech());
 
                     adapter.notifyDataSetChanged();
+
+                    recyclerView.scrollToPosition(chatList.size() -1);
                 }
             }.execute(req);
 
